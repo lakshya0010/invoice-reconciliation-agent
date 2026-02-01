@@ -1,24 +1,21 @@
+from utils.json_util import extract_json
 import json
+from dotenv import load_dotenv
 from schemas.state import ReconciliationState
 from utils.confidence import compute_extraction_confidence
 from tools.pdf_tools import extract_text_from_pdf
 from tools.ocr_tools import extract_text_with_ocr
+from langchain_groq import ChatGroq
+
+load_dotenv()
+llm = ChatGroq(
+    model="llama-3.1-8b-instant",
+    temperature=0
+)
 
 
-def document_agent(state : ReconciliationState):
-    """
-    Docstring for document_agent
-    
-    :param state: Description
-    :type state: ReconciliationState
-
-    1. Extracts text using PDF tools
-    2. If low confidence use OCR
-    3. Parse fields using LLM
-    4. Return updated state
-    """
-
-"""You are a Document Intelligence Agent.
+EXTRACTION_PROMPT = """
+You are a Document Intelligence Agent.
 
 Extract structured invoice data from the provided text.
 The text may be noisy, OCR-derived, incomplete, or poorly formatted.
@@ -56,3 +53,55 @@ Return ONLY valid JSON in this format:
   "llm_confidence": number
 }
 """
+
+def document_agent(state : ReconciliationState)->ReconciliationState:
+    raw_doc = state["raw_document"]
+    print("[DEBUG] raw_doc bytes:", len(raw_doc))
+
+    #Progressive Extraction
+    text = extract_text_from_pdf(raw_doc)
+    extraction_method = "pdf_text"
+
+    if text is None or len(text.strip())==0:
+        text = extract_text_with_ocr(raw_doc)
+        extraction_method = "ocr"
+
+    
+    response = llm.invoke(
+        EXTRACTION_PROMPT + "\n\nInvoice Text:\n" + text
+        )
+    
+
+    #parsing
+    try:
+        content = response.content
+        print(content)
+
+        parsed = extract_json(content)
+
+        if not isinstance(parsed, dict):
+            raise ValueError("Parsed JSON is not a dict")
+    except Exception:
+        parsed = {
+            "invoice_data": "",
+            "llm_confidence": 0.3
+        }
+    
+    extracted_invoice = parsed.get("invoice_data", {})
+    llm_confidence = parsed.get("llm_confidence", 0.7)
+    if not isinstance(extracted_invoice, dict):
+        extracted_invoice = {}
+
+    final_confidence, confidence_breakdown = compute_extraction_confidence(
+        extracted=extracted_invoice,
+        extraction_method=extraction_method,
+        llm_confidence=llm_confidence
+    )
+
+    state["extracted_confidence"] = final_confidence
+    state["extracted_invoice"] = extracted_invoice
+    state["extracted_confidence_breakdown"] = confidence_breakdown
+    state["extraction_method"] = extraction_method
+
+    return state
+

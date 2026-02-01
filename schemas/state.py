@@ -6,6 +6,8 @@ class ReconciliationState(TypedDict):
 
     extracted_invoice : dict
     extracted_confidence : float
+    extracted_confidence_breakdown : dict
+    extraction_method : str
 
     matched_po : Optional[dict]
     po_match_confidence : float
