@@ -56,7 +56,6 @@ Return ONLY valid JSON in this format:
 
 def document_agent(state : ReconciliationState)->ReconciliationState:
     raw_doc = state["raw_document"]
-    print("[DEBUG] raw_doc bytes:", len(raw_doc))
 
     #Progressive Extraction
     text = extract_text_from_pdf(raw_doc)
@@ -75,7 +74,6 @@ def document_agent(state : ReconciliationState)->ReconciliationState:
     #parsing
     try:
         content = response.content
-        print(content)
 
         parsed = extract_json(content)
 

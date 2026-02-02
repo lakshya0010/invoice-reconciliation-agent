@@ -1,19 +1,19 @@
 import os
 from agents.document_agent import document_agent
 from schemas.state import ReconciliationState
+from graphs.reconsiliation_graph import app
+import json
 
 def load_invoice(path:str)->bytes:
     abs_path = os.path.abspath(path)
-    print("Loading invoice from:", abs_path)
     with open(abs_path, "rb") as f:
         data = f.read()
-        print("Loaded bytes:", len(data))
         return data
     
 
     
 if __name__ == "__main__":
-    raw_invoice = load_invoice("data/Invoice_1_Baseline.pdf")
+    raw_invoice = load_invoice("data/Invoice_4_Price_Trap.pdf")
 
     state: ReconciliationState = {
         "invoice_id" : "invoice_1",
@@ -35,12 +35,17 @@ if __name__ == "__main__":
         "final_decision":""
     }
 
-    state = document_agent(state)
+    state = app.invoke(state)
 
-    print("\n--- EXTRACTION RESULT ---")
-    print(state["extracted_invoice"])
+    print("\n=== FINAL DECISION ===")
+    print(state["final_decision"])
+    print(state["decision_reasoning"])
 
-    print("\n--- CONFIDENCE ---")
-    print(state["extracted_confidence"])
-    print(state["extracted_confidence_breakdown"])
-    print("Method:", state["extraction_method"])
+    print("\n=== DISCREPANCIES ===")
+    for d in state["discrepancies"]:
+        print(d)
+
+
+    print("\n=== FINAL OUTPUT (JSON) ===")
+    print(json.dumps(state, indent=2))
+

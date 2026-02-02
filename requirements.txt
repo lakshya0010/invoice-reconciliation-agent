@@ -1,0 +1,13 @@
+langchain
+langgraph
+langchain-groq
+python-dotenv
+
+pdfplumber
+pdf2image
+pytesseract
+Pillow
+
+rapidfuzz
+
+numpy
